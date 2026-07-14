@@ -22,11 +22,21 @@ The other side's busy-time tells you the **headroom**: if you're GPU-bound at 8.
 For each data point:
 
 1. Park at a **fixed spot**. Same spot for every run in that scenario.
-2. Perform the **same slow 360° camera pan** for the full 60 seconds.
-3. Frame Limiter set to **Unlimited** and VSync **off** during measurement runs.
+2. **Stand completely still.** Perform the **same slow 360° camera pan** for the full 60 seconds.
+   **Do not walk the character.** See "Control 3" below — this is not a nitpick, it corrupted four of our captures and produced a conclusion we had to publicly reverse.
+3. **Warm up ~10 minutes in the zone first.** The first capture after a cold start will lie to you (shader compilation). See "Control 1."
+4. Frame Limiter set to **Unlimited** and VSync **off** during measurement runs.
    A frame cap is poison for bottleneck analysis — both CPU and GPU appear idle because they're waiting on the limiter, and every run reports "neither saturated."
-4. `--delay 8 --timed 60` — 8 seconds to alt-tab back, then 60 seconds recorded.
-5. Change **one setting**. Repeat.
+5. `--delay 8 --timed 60` — 8 seconds to alt-tab back, then 60 seconds recorded.
+6. Change **one setting**. Repeat.
+
+### Read the right column
+
+**When evaluating a GPU setting on a CPU-bound machine, read `GPUBusy` — not FPS.**
+
+Our T2 capture made a setting *more expensive* (Shadows Medium→High) and FPS went **up** (117.0 → 125.2), because CPU busy happened to drop 0.60 ms as the map quietened, and the machine is CPU-bound. The GPU signal was clean and correct: **+0.10 ms.**
+
+Anyone benchmarking GW2 by watching an FPS counter — which is every guide we found — will draw wrong conclusions for exactly this reason.
 
 ## Controls
 
@@ -74,6 +84,25 @@ Statistically identical. **Character Model Limit `Low` vs `Lowest` makes no meas
 The A2 → A3b drop (136 → 127) was the map filling with players over ~3 minutes.
 
 **And this accidental control produced the repo's central finding**: the same scene, same settings, flipped from `GPU-BOUND (89%)` to `CPU-BOUND (94%)` purely because players arrived.
+
+### Control 3 — movement (caught a conclusion we had already published)
+
+Captures A6–A8 were taken while **walking the character around** rather than standing still. The tell was A7: it turned *off* two GPU settings (Ambient Occlusion, Screen Space Shadows) and **CPU busy rose 26%** (7.94 → 9.97 ms). A GPU-side change cannot do that.
+
+Movement triggers **asset streaming** — entity load/unload, plus shader compilation on newly-encountered assets. Same config, stationary vs moving:
+
+| | A8 (moving) | T1 (stationary) |
+|---|---|---|
+| Frametime stddev | **3.85 ms** | **2.12 ms** (−45%) |
+| Stutter frames | **93 (1.5%)** | **23 (0.3%)** (−75%) |
+
+We had blamed that frametime chaos on rising map population. **It was the walking.**
+
+**The conclusion this reversed:** A6 measured the High-settings bundle at **+2.87 ms GPU**, which was 3.3× the available headroom. On that basis we declared High-tier GPU settings unaffordable and reverted to a lean config.
+
+The clean stationary T-series then measured the same settings at **~1.0 ms combined** — comfortably affordable. **A6 had been counting streaming work as setting cost.** The lean-config recommendation was wrong and was withdrawn.
+
+This is why the T-series exists, and why it is the only data in this repo we consider authoritative for per-setting GPU costs.
 
 ## VRR
 

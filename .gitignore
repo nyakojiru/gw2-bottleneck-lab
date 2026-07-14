@@ -1,0 +1,4 @@
+# PresentMon binary - users download their own from Intel
+tools/PresentMon.exe
+tools/PresentMon*.exe
+*.etl
